@@ -4,10 +4,11 @@ import sequelize from "../config/database";
 // RSS订阅源
 class RSSSource extends Model {
     public id!: number;
-    public name!: string;
     public url!: string;
+    public title!: string;
     public description?: string;
     public lastFetched?: Date;
+    public enabled!: boolean;
     public readonly createAt!: Date;
     public readonly updateAt!: Date;
 }
@@ -19,14 +20,14 @@ RSSSource.init(
             autoIncrement: true,
             primaryKey: true,
         },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
         url: {
             type: DataTypes.STRING,
             allowNull: false,
             unique: true,
+        },
+        title: {
+            type: DataTypes.STRING,
+            allowNull: false,
         },
         description: {
             type: DataTypes.TEXT,
@@ -35,7 +36,12 @@ RSSSource.init(
         lastFetched: {
             type: DataTypes.DATE,
             allowNull: true,
-        }
+        },
+        enabled: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
+        },
     },
     {
         sequelize,

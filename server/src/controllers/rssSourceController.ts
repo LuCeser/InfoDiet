@@ -1,10 +1,20 @@
 import { Request, Response } from "express";
 import RSSSource from "../models/RSSSource";
+import { fetchRSSFeed } from "../utils/rssFetcher";
 
 export const createRSSSource = async (req: Request, res: Response) => {
     try {
-        const { name, url, description } = req.body;
-        const rssSource = await RSSSource.create({ name, url, description});
+        const { url } = req.body;
+        if (!url) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+
+        const feedData = await fetchRSSFeed(url);
+        const rssSource = await RSSSource.create({ 
+          url: url, 
+          title: feedData.title, 
+          description: feedData.description 
+        });
         res.status(201).json(rssSource);
     } catch(error) {
         res.status(400).json({ error: 'Failed to create RSS source' });

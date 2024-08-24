@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
-app.use('/api/rss-sources', rssSourceRoutes)
+app.use('/api/v1/rss-sources', rssSourceRoutes)
 
 sequelize.sync().then(() => {
     app.listen(PORT, () => {

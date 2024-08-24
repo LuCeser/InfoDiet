@@ -1,5 +1,0 @@
-{
-    "terminal.integrated.env.windows": {
-      "PATH": "${env:PATH};C:\\Users\\fortu\\scoop\\apps\\nodejs-lts\\current"
-    }
-  }
