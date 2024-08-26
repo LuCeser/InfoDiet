@@ -1,8 +1,6 @@
 import axios from "axios";
-import { parseString } from "xml2js";
-import { promisify } from "util";
-
-const parseXML = promisify(parseString);
+import FeedParser from "feedparser";
+import { Stream } from "stream";
 
 interface FeedItem {
     title: string;
@@ -17,89 +15,61 @@ interface FeedData {
     items: FeedItem[];
 }
 
-// Define possible feed structures
-interface RSSFeed {
-    rss: {
-        channel: {
-            title: string[];
-            description: string[];
-            item?: any[];
-        }[];
-    };
-}
-
-interface AtomFeed {
-    feed: {
-        title: string[];
-        subtitle?: string[];
-        entry?: any[];
-    }[];
-}
-
-type ParsedFeed = RSSFeed | AtomFeed | any[];
-
-
-export const fetchRSSFeed = async (url: string): Promise<FeedData> => {
-    try {
-        const response = await axios.get(url);
-        const parsedData = await parseXML(response.data);
-
-        const parsedFeed = parsedData as ParsedFeed;
-        let feedData: FeedData = {
+export const fetchAndParseFeed = (url: string): Promise<FeedData> => {
+    return new Promise((resolve, reject) => {
+        const feedparser = new FeedParser({});
+        const feedData: FeedData = {
             title: '',
             description: '',
-            items: [],
+            items: []
         };
 
-        if(isRSSFeed(parsedFeed)) {
-            const channel = parsedFeed.rss.channel[0];
-            feedData.title = channel.title[0] || '';
-            feedData.description = channel.description[0] || '';
-            feedData.items = channel.item?.map(parseRSSItem) || [];
-        } else if(isAtomFeed(parsedFeed)) {
-            feedData.title = parsedFeed.feed[0].title[0] || '';
-            feedData.description = parsedFeed.feed[0].subtitle ? parsedFeed.feed[0].subtitle[0] : '';
-            feedData.items = parsedFeed.feed[0].entry?.map(parseAtomItem) || [];
-        } else if (Array.isArray(parsedFeed)) {
-            feedData.title = 'Article Feed';
-            feedData.description = 'A list of articles';
-            feedData.items = parsedFeed.map(parseDirectItem);
-        } else {
-            throw new Error('Unrecognized feed format');
-        }
+        console.log(`try to get ${url}`)
 
-        return feedData;
-    } catch (error) {
-        console.error("Error fetching RSS feed:", error);
-        throw error;
-    }
+        axios.get(url, {
+            responseType: 'arraybuffer',
+            headers: {
+                'Accept': 'application/rss+xml, application/xml, application/atom+xml, text/xml',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'        
+            }
+        }).then(response => {
+            if (response.status !== 200) {
+                throw new Error('Bad status code')
+            }
+
+            const buffer = Buffer.from(response.data);
+            const stream = new Stream.PassThrough();
+            stream.end(buffer);
+            stream.pipe(feedparser);
+        }).catch(error => {
+            console.log(`get ${url} failed, ${error.message}`)
+            reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        feedparser.on('error', (error: Error) => {
+            console.log(`get ${url} failed, ${error.message}`)
+            reject(new Error(`FeedParser error: ${error.message}`));
+        });
+
+        feedparser.on('meta', (meta: any) => {
+            feedData.title = meta.title || '';
+            feedData.description = meta.description || '';
+        });
+
+        feedparser.on('readable', function(this: FeedParser) {
+            let item: any;
+            while(item = this.read()) {
+                feedData.items.push({
+                    title: item.title || '',
+                    link: item.link || '',
+                    description: item.description || '',
+                    pubDate: item.pubDate
+                });
+            }
+        });
+
+        feedparser.on('end', () => {
+            resolve(feedData);
+        });
+    });
 };
-
-function isRSSFeed(feed: ParsedFeed): feed is RSSFeed {
-    return (feed as RSSFeed).rss?.channel !== undefined;
-};
-
-function isAtomFeed(feed: ParsedFeed): feed is AtomFeed {
-    return (feed as AtomFeed).feed !== undefined;
-};
-
-const parseRSSItem = (item: any): FeedItem => ({
-    title: item.title?.[0] || '',
-    link: item.link?.[0] || '',
-    description: item.description?.[0] || '',
-    pubDate: item.pubDate ? item.pubDate[0] : undefined,
-});
-
-const parseAtomItem = (item: any): FeedItem => ({
-    title: item.title?.[0] || '',
-    link: item.link?.[0] || '',
-    description: item.summary?.[0] || '',
-    pubDate: item.published ? item.published[0] : undefined,
-});
-
-const parseDirectItem = (item: any): FeedItem => ({
-    title: item.title || '',
-    link: item.link || '',
-    description: item.description || '',
-    pubDate: item.pubDate ? item.pubDate : undefined,
-});
