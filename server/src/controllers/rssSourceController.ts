@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import RSSSource from "../models/RSSSource";
-import { fetchAndParseFeed } from "../utils/rssFetcher";
+import { rssService } from "../services/rssFetchService";
 
 const validIntervals = [15, 30, 45, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 1440];
 
@@ -11,7 +11,7 @@ export const createRSSSource = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'URL is required' });
         }
 
-        const feedData = await fetchAndParseFeed(url);
+        const feedData = await rssService.fetchRSSMetadata(url);
         const rssSource = await RSSSource.create({ 
           url: url, 
           title: feedData.title, 
