@@ -39,17 +39,20 @@ RSSSource.init(
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 60,
+            field: 'fetch_interval',
         },
         dailyFetchTime: {
             type: DataTypes.STRING,
             allowNull: true,
             validate: {
                 is: /^([01]\d|2[0-3]):([0-5]\d)$/
-            }
+            },
+            field: 'daily_fetch_time',
         },
         lastFetched: {
             type: DataTypes.DATE,
             allowNull: true,
+            field: 'last_fetched',
         },
         enabled: {
             type: DataTypes.BOOLEAN,
@@ -59,7 +62,9 @@ RSSSource.init(
     },
     {
         sequelize,
-        modelName: 'RSSSource'
+        modelName: 'RSSSource',
+        tableName: 'rss_sources',
+        underscored: true,
     }
 );
 

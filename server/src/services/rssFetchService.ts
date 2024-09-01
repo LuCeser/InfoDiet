@@ -117,6 +117,7 @@ export class RSSService {
         while ((item = this.read())) {
             // TODO 
             console.log('Got article: %s', item.title);
+            
         }
       });
     });
