@@ -1,6 +1,7 @@
 import axios from "axios";
 import FeedParser from "feedparser";
 import { Stream } from "stream";
+import { processRssItems, ArticleItem } from "./fetchArticleService";
 
 interface FeedItem {
   title: string;
@@ -80,9 +81,10 @@ export class RSSService {
     });
   }
 
-  async fetchRSSContent(url: string): Promise<void> {
+  async fetchRSSContent(url: string): Promise<ArticleItem[]> {
     return new Promise((resolve, reject) => {
       const feedparser = new FeedParser({});
+      const items: any[] = [];
       axios
         .get(url, {
           responseType: "arraybuffer",
@@ -117,9 +119,21 @@ export class RSSService {
         while ((item = this.read())) {
             // TODO 
             console.log('Got article: %s', item.title);
-            
+            items.push(item);
         }
       });
+
+      feedparser.on("end", async() => {
+        console.log(`Fetched ${items.length} articles from ${url}`);
+        try {
+            const articles = await processRssItems(items);
+            resolve(articles);
+        } catch(error) {
+            console.error(`Error processing articles: ${error}`);
+            reject(error);
+        }
+      });
+
     });
   }
 }

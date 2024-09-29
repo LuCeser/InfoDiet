@@ -18,6 +18,9 @@ export const createRSSSource = async (req: Request, res: Response) => {
           description: feedData.description,
           fetchInterval: 60, // default to 1 hour
         });
+
+        const items = await rssService.fetchRSSContent(url);
+
         res.status(201).json(rssSource);
     } catch(error) {
         res.status(400).json({ error: 'Failed to create RSS source' });
